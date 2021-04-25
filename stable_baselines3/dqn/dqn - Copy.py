@@ -168,9 +168,7 @@ class DQN(OffPolicyAlgorithm):
             current_q_values = th.gather(current_q_values, dim=1, index=replay_data.actions.long())
 
             # Compute Huber loss (less sensitive to outliers)
-            # loss = F.smooth_l1_loss(current_q_values, target_q_values)
-            # Compute DQNReg loss
-            loss = self.dqnreg_loss(current_q_values, target_q_values)
+            loss = F.smooth_l1_loss(current_q_values, target_q_values)
             losses.append(loss.item())
 
             # Optimize the policy
@@ -245,19 +243,3 @@ class DQN(OffPolicyAlgorithm):
         state_dicts = ["policy", "policy.optimizer"]
 
         return state_dicts, []
-
-    @staticmethod
-    def dqnreg_loss(current_q, target_q, weight=0.1):
-        """
-        Custom loss function per paper: https://arxiv.org/abs/2101.03958
-        In DQN, replaces Huber/MSE loss between train and target network
-        :param current_q: Q(st, at) of training network
-        :param target_q: Max Q value from the target network, including the reward and gamma. r + gamma * Q_target(st+1,a)
-        :param weight: scalar. weighted term that regularizes Q value. Paper defaults to 0.1 but theorizes that tuning this
-        per env to some positive value may be beneficial.
-        """
-        # loss = weight * Q(st, at) + delta^2
-        delta = current_q - target_q
-        loss = th.mean(weight * current_q + th.pow(delta, 2))
-
-        return loss
